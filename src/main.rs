@@ -109,6 +109,48 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
         )?;
     }
 
+    let players = ecs.read_storage::<components::Player>();
+    for(renderable, pos, _) in (&renderables, &positions, &players).join(){
+        let src = Rect::new(0,0,renderable.i_w, renderable.i_h);
+        let x: i32 = pos.x as i32;
+        let y: i32 = pos.y as i32;
+        let mut dest = Rect::new(x - ((renderable.o_w/2) as i32), y - ((renderable.o_h/2) as i32),renderable.o_w,renderable.o_h);
+
+        let mut draw_second = false;
+        if dest.x < (renderable.o_w/2).try_into().unwrap() {
+            dest.x += crate::SCREEN_WIDTH as i32;
+            draw_second = true;
+        } else if dest.x > (crate::SCREEN_WIDTH - renderable.o_w/2) as i32 {
+            dest.x -= crate::SCREEN_WIDTH as i32;
+            draw_second = true;
+        }
+
+        if dest.y < (renderable.o_h/2).try_into().unwrap() {
+            dest.y += crate::SCREEN_HEIGHT as i32;
+            draw_second = true;
+        } else if dest.y > (crate::SCREEN_HEIGHT - renderable.o_h/2) as i32 {
+            dest.y -= crate::SCREEN_HEIGHT as i32;
+            draw_second = true;
+        }
+
+        if !draw_second {
+            break;
+        }
+
+        let center = Point::new((renderable.o_w/2) as i32,(renderable.o_h/2) as i32);
+        let texture = texture_manager.load(&renderable.tex_name)?;
+        canvas.copy_ex(
+            &texture, //Texture Object
+            src, //Source Rectangle
+            dest, //Destination Rectangle
+            renderable.rot, //Rotation
+            center, //Rotation Center
+            false, //Flip Horizontal
+            false //Flip Vertical
+        )?;
+    }
+
+
     let gamedatas = ecs.read_storage::<components::GameData>();
     for gamedata in (gamedatas).join(){
         let score: String = "Score: ".to_string() + &gamedata.score.to_string();
