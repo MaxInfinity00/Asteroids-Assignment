@@ -12,6 +12,7 @@ specs-derive = "0.4.1"
 vector2d = "2.2.0"
 rand = "0.8.5"
 once_cell = "1.18.0"
+kira = "0.7.0"
 
 [dependencies.sdl2]
 version = "0.35.2"

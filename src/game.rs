@@ -3,7 +3,7 @@ use specs::{World, WorldExt, Builder, Join};
 
 use rand::Rng;
 
-use crate::components;
+use crate::{components, SHOOT_FILENAME};
 use crate::utils;
 
 const ROTATION_SPEED: f64 = 2.0;
@@ -74,6 +74,7 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
 
     let mut player_pos = components::Position{x: 0.0, y: 0.0, rot: 0.0};
     let mut must_fire_missile = false;
+    let mut thruster_pushed = false;
     {
         let mut positions =  ecs.write_storage::<crate::components::Position>();
         let mut players = ecs.write_storage::<crate::components::Player>();
@@ -83,9 +84,11 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
 
             if crate::utils::is_key_pressed(&key_manager, "D"){
                 pos.rot += ROTATION_SPEED;
+                thruster_pushed = true;
             }
             if crate::utils::is_key_pressed(&key_manager, "A"){
                 pos.rot -= ROTATION_SPEED;
+                thruster_pushed = true;
             }
             if pos.rot > 360.0 {
                 pos.rot -= 360.0;
@@ -97,6 +100,7 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
             if crate::utils::is_key_pressed(&key_manager, "W"){
                 player.impulse.y -= pos.rot.to_radians().cos() * IMPULSE_SPEED;
                 player.impulse.x += pos.rot.to_radians().sin() * IMPULSE_SPEED;
+                thruster_pushed = true;
             }
             update_movement(pos,player);
 
@@ -123,6 +127,23 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
             //Update the graphic to reflect the rotation
             renderable.rot = pos.rot;
         }
+    }
+
+    if thruster_pushed {
+        ecs.create_entity()
+            .with(components::SoundCue{
+                filename: crate::THRUSTER_FILENAME.to_string(),
+                sc_type: components::SoundCueType::LoopSound
+            })
+            .build();
+    }
+    else{
+        ecs.create_entity()
+            .with(components::SoundCue{
+                filename: crate::THRUSTER_FILENAME.to_string(),
+                sc_type: components::SoundCueType::StopSound
+            })
+            .build();
     }
 
     if must_fire_missile {
@@ -219,6 +240,13 @@ fn fire_missile(ecs: &mut World, position: components::Position){
         })
         .with(crate::components::Missile{
             speed: 5.0
+        })
+        .build();
+
+    ecs.create_entity()
+        .with(components::SoundCue{
+            filename: crate::SHOOT_FILENAME.to_string(),
+            sc_type: components::SoundCueType::PlaySound
         })
         .build();
 }

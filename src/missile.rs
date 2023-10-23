@@ -25,6 +25,11 @@ impl<'a> System<'a> for MissileMover {
 
             if pos.x > crate::SCREEN_WIDTH.into() || pos.x < 0.0 || pos.y > crate::SCREEN_HEIGHT.into() || pos.y < 0.0 {
                 entities.delete(entity).unwrap();
+                // ecs.create_entity()
+                //     .with(components::SoundCue{
+                //         filename: "sounds/fx/reload.wav".to_string()
+                //     })
+                //     .build();
             }
 
             rend.rot = pos.rot;

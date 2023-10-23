@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use once_cell::sync::Lazy;
 
 pub mod texture_manager;
+pub mod sound_manager;
 pub mod utils;
 pub mod components;
 pub mod game;
@@ -26,6 +27,11 @@ pub mod missile;
 // const OUTPUT_HEIGHT: u32 = 100;
 const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 600;
+
+const MUSIC_FILENAME: &str = "sounds/music/space_ranger.wav";
+const THRUSTER_FILENAME: &str = "sounds/fx/thrusters.mp3";
+const SHOOT_FILENAME: &str = "sounds/fx/shoot.mp3";
+const RELOAD_FILENAME: &str = "sounds/fx/reload.wav";
 
 fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::TextureManager<WindowContext>, texture_creator: &TextureCreator<WindowContext>, font: &sdl2::ttf::Font, ecs: &World) -> Result<(),String> {
     let color = Color::RGB(255,255,255);
@@ -232,6 +238,16 @@ fn main() -> Result<(),String>{
     texture_manager.load("img/asteroid1.png")?; //Loads Asteroid Texture to Memory
     texture_manager.load("img/missile.png")?; //Loads Missile Texture to Memory
 
+
+    //Sound Manager
+    let mut sound_manager = sound_manager::SoundManager::new();
+
+    //Load the soudns to prevent loading during gameplay
+    sound_manager.load_sound(&MUSIC_FILENAME.to_string(), true);
+    sound_manager.load_sound(&THRUSTER_FILENAME.to_string(), true);
+    sound_manager.load_sound(&SHOOT_FILENAME.to_string(), false);
+    sound_manager.load_sound(&RELOAD_FILENAME.to_string(), false);
+
     //Prepare fonts
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
     let font_path: &Path = Path::new(&"fonts/Monocraft.ttf");
@@ -251,6 +267,7 @@ fn main() -> Result<(),String>{
     gs.ecs.register::<components::Missile>();
     gs.ecs.register::<components::GameData>();
     // gs.ecs.register::<components::Star>();
+    gs.ecs.register::<components::SoundCue>();
 
     let mut dispatcher = DispatcherBuilder::new() //Creates a dispatcher to run systems
         .with(asteroid::AsteroidMover, "asteroid_mover", &[])
@@ -260,6 +277,9 @@ fn main() -> Result<(),String>{
         .build();
 
     game::load_world(&mut gs.ecs);
+
+    //Start Music Playing
+    sound_manager.resume_sound(&MUSIC_FILENAME.to_string());
 
     'running: loop {
         for event in event_pump.poll_iter(){
@@ -275,6 +295,14 @@ fn main() -> Result<(),String>{
                 },
                 Event::KeyUp {keycode: Some(Keycode::Space),..} => {
                     utils::key_up(&mut key_manager, " ".to_string());
+                },
+                Event::KeyUp {keycode: Some(Keycode::P),..} => {
+                    println!("Pausing Music");
+                    sound_manager.stop_sound(&MUSIC_FILENAME.to_string());
+                },
+                Event::KeyUp {keycode: Some(Keycode::O),..} => {
+                    println!("Resuming Music");
+                    sound_manager.resume_sound(&MUSIC_FILENAME.to_string());
                 },
                 Event::KeyDown {keycode,..} => {
                     match keycode {
@@ -298,6 +326,21 @@ fn main() -> Result<(),String>{
         game::update(&mut gs.ecs, &mut key_manager);
         dispatcher.dispatch(&mut gs.ecs); //Runs the dispatcher and all systems run events
         gs.ecs.maintain(); //Removes all entities that have been deleted
+
+        let cues = gs.ecs.read_storage::<components::SoundCue>();
+        let entities = gs.ecs.entities();
+
+        for(cue,entitiy) in (&cues,&entities).join() {
+            if cue.sc_type == components::SoundCueType::PlaySound {
+                sound_manager.play_sound(cue.filename.to_string());
+            } else if cue.sc_type == components::SoundCueType::LoopSound {
+                sound_manager.resume_sound(&cue.filename.to_string());
+            } else if cue.sc_type == components::SoundCueType::StopSound {
+                sound_manager.stop_sound(&cue.filename.to_string());
+            }
+            entities.delete(entitiy).ok();
+        }
+
         let _ = render(&mut canvas,&mut texture_manager, &texture_creator,&font, &gs.ecs);
         
         ::std::thread::sleep(Duration::new(0,1_000_000_000u32/60));
