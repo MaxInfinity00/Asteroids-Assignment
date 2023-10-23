@@ -147,7 +147,7 @@ pub fn update_movement(pos: &mut crate::components::Position, player: &mut crate
     player.impulse = vector2d::Vector2D::new(0.0,0.0);
 }
 
-pub const MAX_STARS: u32 = 100;
+// pub const MAX_STARS: u32 = 100;
 
 pub fn load_world(ecs: &mut World){
     ecs.create_entity()
@@ -177,22 +177,22 @@ pub fn load_world(ecs: &mut World){
         })
         .build();
 
-    for _ in 0..MAX_STARS {
-        let mut rng = rand::thread_rng();
-        let next_x = rng.gen_range(0.0..crate::SCREEN_WIDTH as f64);
-        let next_y = rng.gen_range(0.0..crate::SCREEN_HEIGHT as f64);
-        let next_size = rng.gen_range(1..4);
-        ecs.create_entity()
-            .with(crate::components::Position{
-                x: next_x,
-                y: next_y,
-                rot: 0.0
-            })
-            .with(crate::components::Star{
-                size: next_size
-            })
-            .build();
-    }
+    // for _ in 0..MAX_STARS { //Create Stars
+    //     let mut rng = rand::thread_rng();
+    //     let next_x = rng.gen_range(0.0..crate::SCREEN_WIDTH as f64);
+    //     let next_y = rng.gen_range(0.0..crate::SCREEN_HEIGHT as f64);
+    //     let next_size = rng.gen_range(1..4);
+    //     ecs.create_entity()
+    //         .with(crate::components::Position{
+    //             x: next_x,
+    //             y: next_y,
+    //             rot: 0.0
+    //         })
+    //         .with(crate::components::Star{
+    //             size: next_size
+    //         })
+    //         .build();
+    // }
 }
 
 const MAX_MISSILES: usize = 5;

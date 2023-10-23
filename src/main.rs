@@ -6,9 +6,12 @@ use sdl2::pixels::Color;
 use sdl2::rect::{Rect,Point};
 use specs::{World, WorldExt, Join, DispatcherBuilder};
 
+use std::sync::Mutex;
 use std::time::Duration;
 use std::path::Path;
 use std::collections::HashMap;
+
+use once_cell::sync::Lazy;
 
 pub mod texture_manager;
 pub mod utils;
@@ -74,14 +77,15 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
 
     let positions = ecs.read_storage::<components::Position>();
     {
-        canvas.set_draw_color(Color::RGBA(0,0,0,128));
-        let stars = ecs.read_storage::<components::Star>();
-        for (pos,star) in (&positions,&stars).join(){
-            let x = pos.x as i32;
-            let y = pos.y as i32;
-            let dest = Rect::new(x,y,star.size,star.size);
-            canvas.fill_rect(dest)?;
-        }
+        ////Draw Stars
+        // canvas.set_draw_color(Color::RGBA(0,0,0,128));
+        // let stars = ecs.read_storage::<components::Star>();
+        // for (pos,star) in (&positions,&stars).join(){
+        //     let x = pos.x as i32;
+        //     let y = pos.y as i32;
+        //     let dest = Rect::new(x,y,star.size,star.size);
+        //     canvas.fill_rect(dest)?;
+        // }
     }
 
     let renderables = ecs.read_storage::<components::Renderable>();
@@ -118,6 +122,34 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
 
         let target = Rect::new(10 as i32,0 as i32,100 as u32,50 as u32);
         canvas.copy(&texture, None, Some(target));
+
+        //Show Level
+        let level: String = "Level: ".to_string() + &gamedata.level.to_string();
+        let surface = font
+            .render(&level)
+            .blended(Color::RGBA(0,0,0,255))
+            .map_err(|e| e.to_string())?;
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+
+        let target = Rect::new((SCREEN_WIDTH - 110) as i32,0 as i32,100 as u32,50 as u32);
+        canvas.copy(&texture, None, Some(target));
+
+
+        //Show Highscore
+        let highscore: String = "High Score: ".to_string() + &GAMESTATE.lock().unwrap().highscore.to_string();
+        let surface = font
+            .render(&highscore)
+            .blended(Color::RGBA(0,0,0,255))
+            .map_err(|e| e.to_string())?;
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+
+        let target = Rect::new(10 as i32,(SCREEN_HEIGHT - 60 ) as i32,150 as u32,50 as u32);
+        canvas.copy(&texture, None, Some(target));
+
     }
 
     canvas.present();
@@ -125,6 +157,16 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
 }
 
 struct State{ecs: World}
+
+pub struct GameState{
+    highscore: u32
+}
+
+static GAMESTATE: Lazy<Mutex<GameState>> = Lazy::new(|| {
+    Mutex::new(GameState{
+        highscore: 0
+    })
+});
 
 fn main() -> Result<(),String>{
     println!("Starting Asteroids!");
@@ -166,7 +208,7 @@ fn main() -> Result<(),String>{
     gs.ecs.register::<components::Asteroid>();
     gs.ecs.register::<components::Missile>();
     gs.ecs.register::<components::GameData>();
-    gs.ecs.register::<components::Star>();
+    // gs.ecs.register::<components::Star>();
 
     let mut dispatcher = DispatcherBuilder::new() //Creates a dispatcher to run systems
         .with(asteroid::AsteroidMover, "asteroid_mover", &[])
