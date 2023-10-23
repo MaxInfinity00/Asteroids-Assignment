@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use specs::{World, WorldExt, Builder, Join};
 
+use rand::Rng;
+
 use crate::components;
 use crate::utils;
 
@@ -30,40 +32,44 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
     }
 
     let mut must_create_asteroid = false;
+    let mut number_asteroids: u32 = 0;
     {
         let asteroids = ecs.read_storage::<crate::components::Asteroid>();
         if asteroids.join().count() < 1 {
             must_create_asteroid = true;
+
+            let mut gamedatas = ecs.write_storage::<crate::components::GameData>();
+            for mut gamedata in (&mut gamedatas).join(){
+                gamedata.level += 1;
+                number_asteroids = (gamedata.level /3) + 1;
+            }
         }
     }
 
     if must_create_asteroid {
-        if current_player_position.x > (crate::SCREEN_WIDTH/2).into() && current_player_position.y < (crate::SCREEN_HEIGHT/2).into(){
-            //Player in top right Quad
-            current_player_position.x = crate::SCREEN_WIDTH as f64 / 4.0;
-            current_player_position.y = crate::SCREEN_HEIGHT as f64 - (crate::SCREEN_HEIGHT as f64 / 4.0);
-            current_player_position.rot = 225.0;
-        }
-        else if current_player_position.x < (crate::SCREEN_WIDTH/2).into() && current_player_position.y < (crate::SCREEN_HEIGHT/2).into(){
-            //Player in top left Quad
-            current_player_position.x = crate::SCREEN_WIDTH as f64 - (crate::SCREEN_WIDTH as f64 / 4.0);
-            current_player_position.y = crate::SCREEN_HEIGHT as f64 - (crate::SCREEN_HEIGHT as f64 / 4.0);
-            current_player_position.rot = 135.0;
-        }
-        else if current_player_position.x > (crate::SCREEN_WIDTH/2).into() && current_player_position.y > (crate::SCREEN_HEIGHT/2).into(){
-            //Player in bottom right Quad
-            current_player_position.x = crate::SCREEN_WIDTH as f64 / 4.0;
-            current_player_position.y = crate::SCREEN_HEIGHT as f64 / 4.0;
-            current_player_position.rot = 315.0;
-        }
-        else if current_player_position.x < (crate::SCREEN_WIDTH/2).into() && current_player_position.y > (crate::SCREEN_HEIGHT/2).into(){
-            //Player in bottom left Quad
-            current_player_position.x = crate::SCREEN_WIDTH as f64 - (crate::SCREEN_WIDTH as f64 / 4.0);
-            current_player_position.y = crate::SCREEN_HEIGHT as f64 / 4.0;
-            current_player_position.rot = 45.0;
+        let mut asteroid_count: u32 = 0;
+        while asteroid_count < number_asteroids {
+            let mut rng = rand::thread_rng();
+            let next_x = rng.gen_range(50.0..crate::SCREEN_WIDTH as f64 - 50.0);
+            let next_y = rng.gen_range(50.0..crate::SCREEN_HEIGHT as f64 - 50.0);
+            let next_rot = rng.gen_range(0.0..360.0);
+
+            let diff_x = (next_x - current_player_position.x).abs();
+            let diff_y = (next_y - current_player_position.y).abs();
+            let dist = (diff_x * diff_x + diff_y * diff_y).sqrt();
+            if dist < 150.0 {
+                continue;
+            }
+
+            asteroid_count += 1;
+            let new_asteroid = components::Position{
+                x: next_x,
+                y: next_y,
+                rot: next_rot
+            };
+            create_asteroid(ecs,new_asteroid,100);
         }
 
-        create_asteroid(ecs, current_player_position,100);
     }
 
     let mut player_pos = components::Position{x: 0.0, y: 0.0, rot: 0.0};
@@ -141,6 +147,8 @@ pub fn update_movement(pos: &mut crate::components::Position, player: &mut crate
     player.impulse = vector2d::Vector2D::new(0.0,0.0);
 }
 
+pub const MAX_STARS: u32 = 100;
+
 pub fn load_world(ecs: &mut World){
     ecs.create_entity()
         .with(crate::components::Position{x: 350.0, y: 250.0, rot: 0.0})
@@ -161,14 +169,38 @@ pub fn load_world(ecs: &mut World){
         .build();
 
     create_asteroid(ecs, components::Position{x: 400.0, y: 235.0, rot: 45.0},50);
+
+    ecs.create_entity()
+        .with(crate::components::GameData{
+            score: 0,
+            level: 1
+        })
+        .build();
+
+    for _ in 0..MAX_STARS {
+        let mut rng = rand::thread_rng();
+        let next_x = rng.gen_range(0.0..crate::SCREEN_WIDTH as f64);
+        let next_y = rng.gen_range(0.0..crate::SCREEN_HEIGHT as f64);
+        let next_size = rng.gen_range(1..4);
+        ecs.create_entity()
+            .with(crate::components::Position{
+                x: next_x,
+                y: next_y,
+                rot: 0.0
+            })
+            .with(crate::components::Star{
+                size: next_size
+            })
+            .build();
+    }
 }
 
-const MAX_MISSILES: usize = 3;
+const MAX_MISSILES: usize = 5;
 
 fn fire_missile(ecs: &mut World, position: components::Position){
     {
         let missiles = ecs.read_storage::<crate::components::Missile>();
-        if missiles.count() >= MAX_MISSILES - 1{
+        if missiles.count() > MAX_MISSILES - 1{
             return;
         }
     }

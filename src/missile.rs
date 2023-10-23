@@ -40,12 +40,14 @@ impl<'a> System<'a> for MissileStriker {
         WriteStorage<'a, components::Renderable>,
         WriteStorage<'a, components::Missile>,
         WriteStorage<'a, components::Asteroid>,
+        WriteStorage<'a, components::GameData>,
         Entities<'a>
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (positions, renderables, missiles, asteroids, entities) = &data;
+        let (positions, renderables, missiles, asteroids,_, entities) = &data;
         let mut asteroid_creation = Vec::<components::PendingAsteroid>::new();
+        let mut score:u32 = 0;
 
         for( asteroid_pos,asteroid_rend,_, asteroid_entity) in (positions,renderables,asteroids,entities).join(){
             for(missile_pos,_,_,missile_entity) in (positions,renderables,missiles,entities).join(){
@@ -54,6 +56,7 @@ impl<'a> System<'a> for MissileStriker {
                 let dist = (diff_x * diff_x + diff_y * diff_y).sqrt();
 
                 if dist < asteroid_rend.o_w as f64  / 2.0{
+                    score += 10;
                     entities.delete(missile_entity).ok();
                     entities.delete(asteroid_entity).ok();
                     let new_size = asteroid_rend.o_w / 2;
@@ -75,7 +78,7 @@ impl<'a> System<'a> for MissileStriker {
             }
         }
 
-        let (mut positions, mut renderables, _, mut asteroids,entities) = data;
+        let (mut positions, mut renderables, _, mut asteroids,_,entities) = data;
         // let (ref positions, ref renderables, _, ref asteroids,ref entities) = data;
         for new_asteroid in asteroid_creation {
             let new_ast = entities.create();
@@ -91,6 +94,11 @@ impl<'a> System<'a> for MissileStriker {
                 total_frames: 1,
                 rot: 0.0
             }).ok();
+        }
+
+        let(_,_,_,_,mut game_data,_) = data;
+        for mut gamedata in (&mut game_data).join(){
+            gamedata.score += score;
         }
     }
 }

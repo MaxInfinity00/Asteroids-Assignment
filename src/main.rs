@@ -24,7 +24,7 @@ pub mod missile;
 const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 600;
 
-fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::TextureManager<WindowContext>, _texture_creator: &TextureCreator<WindowContext>, _font: &sdl2::ttf::Font, ecs: &World) -> Result<(),String> {
+fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::TextureManager<WindowContext>, texture_creator: &TextureCreator<WindowContext>, font: &sdl2::ttf::Font, ecs: &World) -> Result<(),String> {
     let color = Color::RGB(255,255,255);
     canvas.set_draw_color(color);
     canvas.clear();
@@ -73,6 +73,17 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
     // )?;
 
     let positions = ecs.read_storage::<components::Position>();
+    {
+        canvas.set_draw_color(Color::RGBA(0,0,0,128));
+        let stars = ecs.read_storage::<components::Star>();
+        for (pos,star) in (&positions,&stars).join(){
+            let x = pos.x as i32;
+            let y = pos.y as i32;
+            let dest = Rect::new(x,y,star.size,star.size);
+            canvas.fill_rect(dest)?;
+        }
+    }
+
     let renderables = ecs.read_storage::<components::Renderable>();
 
     for(renderable, pos) in (&renderables,&positions).join(){
@@ -92,6 +103,21 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
             false, //Flip Horizontal
             false //Flip Vertical
         )?;
+    }
+
+    let gamedatas = ecs.read_storage::<components::GameData>();
+    for gamedata in (gamedatas).join(){
+        let score: String = "Score: ".to_string() + &gamedata.score.to_string();
+        let surface = font
+            .render(&score)
+            .blended(Color::RGBA(0,0,0,255))
+            .map_err(|e| e.to_string())?;
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+
+        let target = Rect::new(10 as i32,0 as i32,100 as u32,50 as u32);
+        canvas.copy(&texture, None, Some(target));
     }
 
     canvas.present();
@@ -139,6 +165,8 @@ fn main() -> Result<(),String>{
     gs.ecs.register::<components::Player>();
     gs.ecs.register::<components::Asteroid>();
     gs.ecs.register::<components::Missile>();
+    gs.ecs.register::<components::GameData>();
+    gs.ecs.register::<components::Star>();
 
     let mut dispatcher = DispatcherBuilder::new() //Creates a dispatcher to run systems
         .with(asteroid::AsteroidMover, "asteroid_mover", &[])
