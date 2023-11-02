@@ -5,11 +5,13 @@ use sdl2::video::WindowContext;
 use sdl2::pixels::Color;
 use sdl2::rect::{Rect,Point};
 use specs::{World, WorldExt, Join, DispatcherBuilder};
+use std::time::Instant;
 
 use std::sync::Mutex;
 use std::time::Duration;
 use std::path::Path;
 use std::collections::HashMap;
+use kira::track::effect::delay::DelayBuilder;
 
 use once_cell::sync::Lazy;
 
@@ -33,7 +35,10 @@ const THRUSTER_FILENAME: &str = "sounds/fx/thrusters.mp3";
 const SHOOT_FILENAME: &str = "sounds/fx/shoot.mp3";
 const RELOAD_FILENAME: &str = "sounds/fx/reload.wav";
 
-fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::TextureManager<WindowContext>, texture_creator: &TextureCreator<WindowContext>, font: &sdl2::ttf::Font, ecs: &World) -> Result<(),String> {
+#[derive(Default)]
+pub struct DeltaTime(pub f64);
+
+fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::TextureManager<WindowContext>, texture_creator: &TextureCreator<WindowContext>, font: &sdl2::ttf::Font, ecs: &World, fps: u64) -> Result<(),String> {
     let color = Color::RGB(255,255,255);
     canvas.set_draw_color(color);
     canvas.clear();
@@ -116,7 +121,20 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
     }
 
     let players = ecs.read_storage::<components::Player>();
-    for(renderable, pos, _) in (&renderables, &positions, &players).join(){
+    for(renderable, pos, player) in (&renderables, &positions, &players).join(){
+
+        let lives: String = "Lives: ".to_string() + &player.lives.to_string();
+        let surface = font
+            .render(&lives)
+            .blended(Color::RGBA(0,0,0,255))
+            .map_err(|e| e.to_string())?;
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+
+        let target = Rect::new((SCREEN_WIDTH - 110) as i32,55 as i32,100 as u32,50 as u32);
+        canvas.copy(&texture, None, Some(target));
+
         let src = Rect::new(0,0,renderable.i_w, renderable.i_h);
         let x: i32 = pos.x as i32;
         let y: i32 = pos.y as i32;
@@ -154,6 +172,7 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
             false, //Flip Horizontal
             false //Flip Vertical
         )?;
+
     }
 
 
@@ -195,9 +214,22 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
             .create_texture_from_surface(&surface)
             .map_err(|e| e.to_string())?;
 
+
         let target = Rect::new(10 as i32,(SCREEN_HEIGHT - 60 ) as i32,150 as u32,50 as u32);
         canvas.copy(&texture, None, Some(target));
 
+        //Show FPS
+        let fpsCounter: String = "FPS: ".to_string() + &fps.to_string();
+        let surface = font
+            .render(&fpsCounter)
+            .blended(Color::RGBA(0,0,0,255))
+            .map_err(|e| e.to_string())?;
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+
+        let target = Rect::new((SCREEN_WIDTH - 160) as i32,(SCREEN_HEIGHT - 60 ) as i32,150 as u32,50 as u32);
+        canvas.copy(&texture, None, Some(target));
     }
 
     canvas.present();
@@ -268,6 +300,7 @@ fn main() -> Result<(),String>{
     gs.ecs.register::<components::GameData>();
     // gs.ecs.register::<components::Star>();
     gs.ecs.register::<components::SoundCue>();
+    gs.ecs.insert(DeltaTime(0.0));
 
     let mut dispatcher = DispatcherBuilder::new() //Creates a dispatcher to run systems
         .with(asteroid::AsteroidMover, "asteroid_mover", &[])
@@ -280,6 +313,16 @@ fn main() -> Result<(),String>{
 
     //Start Music Playing
     sound_manager.resume_sound(&MUSIC_FILENAME.to_string());
+
+    let mut frame_count = 0u64;
+    let mut last_frame_time = Instant::now();
+    let mut last_frame_time_fps = Instant::now();
+    let mut fps = 0u64;
+
+    //init at 100 to draw initial UI
+    // let mut loop_count = 100;
+
+    let mut unlockedFPS = false;
 
     'running: loop {
         for event in event_pump.poll_iter(){
@@ -304,6 +347,13 @@ fn main() -> Result<(),String>{
                     println!("Resuming Music");
                     sound_manager.resume_sound(&MUSIC_FILENAME.to_string());
                 },
+                Event::KeyUp {keycode: Some(Keycode::U),..} => {
+                    println!("FPS Toggle");
+                    unlockedFPS = !unlockedFPS;
+                    if(unlockedFPS){
+                        sound_manager.stop_sound(&THRUSTER_FILENAME.to_string());
+                    }
+                },
                 Event::KeyDown {keycode,..} => {
                     match keycode {
                         None => {},
@@ -323,28 +373,50 @@ fn main() -> Result<(),String>{
                 _ => {}
             }
         }
-        game::update(&mut gs.ecs, &mut key_manager);
+
+        let now = Instant::now();
+        let delta_time = now.duration_since(last_frame_time).as_secs_f64();
+        last_frame_time = now;
+
+        if(delta_time != 0.0){
+            fps = (1.0/delta_time) as u64;
+        }
+        // frame_count += 1;
+        //
+        // let elapsed_time_fps = last_frame_time_fps.elapsed();
+        // if elapsed_time_fps.as_secs() >= 1 {
+        //     fps = frame_count;
+        //     frame_count = 0;
+        //     last_frame_time_fps += Duration::new(1, 0);
+        // }
+
+        gs.ecs.write_resource::<DeltaTime>().0 = delta_time;
+
+        game::update(&mut gs.ecs, &mut key_manager,delta_time);
         dispatcher.dispatch(&mut gs.ecs); //Runs the dispatcher and all systems run events
         gs.ecs.maintain(); //Removes all entities that have been deleted
 
+        let _ = render(&mut canvas,&mut texture_manager, &texture_creator,&font, &gs.ecs, fps);
         let cues = gs.ecs.read_storage::<components::SoundCue>();
         let entities = gs.ecs.entities();
-
-        for(cue,entitiy) in (&cues,&entities).join() {
-            if cue.sc_type == components::SoundCueType::PlaySound {
-                sound_manager.play_sound(cue.filename.to_string());
-            } else if cue.sc_type == components::SoundCueType::LoopSound {
-                sound_manager.resume_sound(&cue.filename.to_string());
-            } else if cue.sc_type == components::SoundCueType::StopSound {
-                sound_manager.stop_sound(&cue.filename.to_string());
+        for (cue, entitiy) in (&cues, &entities).join() {
+            if(!unlockedFPS) {
+                if cue.sc_type == components::SoundCueType::PlaySound {
+                    sound_manager.play_sound(cue.filename.to_string());
+                } else if cue.sc_type == components::SoundCueType::LoopSound {
+                    sound_manager.resume_sound(&cue.filename.to_string());
+                } else if cue.sc_type == components::SoundCueType::StopSound {
+                    sound_manager.stop_sound(&cue.filename.to_string());
+                }
             }
             entities.delete(entitiy).ok();
         }
-
-        let _ = render(&mut canvas,&mut texture_manager, &texture_creator,&font, &gs.ecs);
-        
-        ::std::thread::sleep(Duration::new(0,1_000_000_000u32/60));
+        if(!unlockedFPS){
+            std::thread::sleep(Duration::new(0,1_000_000_000u32/60));
+        }
     }
-    
+
     Ok(())
 }
+
+

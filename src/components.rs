@@ -26,7 +26,10 @@ pub struct Renderable {
 #[derive(Component)]
 pub struct Player {
     pub impulse: Vector2D<f64>,
-    pub cur_speed: Vector2D<f64>
+    pub cur_speed: Vector2D<f64>,
+    pub lives: u32,
+    pub died: bool,
+    pub invulnerable: bool
 }
 
 // Asteroid Component

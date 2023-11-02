@@ -6,17 +6,27 @@ use rand::Rng;
 use crate::{components, SHOOT_FILENAME};
 use crate::utils;
 
-const ROTATION_SPEED: f64 = 2.0;
-const IMPULSE_SPEED: f64 = 3.0;
-pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
+const ROTATION_SPEED: f64 = 120.0;
+const IMPULSE_SPEED: f64 = 300.0;
+pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>, deltaTime: f64){
     //Check status of the game world
     let mut must_reload_world = false;
     let mut current_player_position = components::Position{x:0.0, y: 0.0, rot: 0.0};
 
     {
-        let players = ecs.read_storage::<crate::components::Player>();
-        let positions = ecs.read_storage::<crate::components::Position>();
-        for(pos,player) in (&positions,&players).join(){
+        let mut players = ecs.write_storage::<crate::components::Player>();
+        let mut positions = ecs.write_storage::<crate::components::Position>();
+        for(pos,player) in (&mut positions,&mut players).join(){
+            if player.died {
+                player.died = false;
+                player.lives -= 1;
+                player.cur_speed.x = 0.0;
+                player.cur_speed.y = 0.0;
+                player.impulse.x = 0.0;
+                player.impulse.y = 0.0;
+                pos.x = crate::SCREEN_WIDTH as f64 / 2.0;
+                pos.y = crate::SCREEN_HEIGHT as f64 / 2.0;
+            }
             current_player_position.x = pos.x;
             current_player_position.y = pos.y;
         }
@@ -83,11 +93,11 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
         for(player,pos, renderable) in (&mut players, &mut positions, &mut renderables).join(){
 
             if crate::utils::is_key_pressed(&key_manager, "D"){
-                pos.rot += ROTATION_SPEED;
+                pos.rot += ROTATION_SPEED * deltaTime;
                 thruster_pushed = true;
             }
             if crate::utils::is_key_pressed(&key_manager, "A"){
-                pos.rot -= ROTATION_SPEED;
+                pos.rot -= ROTATION_SPEED*deltaTime;
                 thruster_pushed = true;
             }
             if pos.rot > 360.0 {
@@ -102,18 +112,19 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
                 player.impulse.x += pos.rot.to_radians().sin() * IMPULSE_SPEED;
                 thruster_pushed = true;
             }
-            update_movement(pos,player);
+            update_movement(pos,player,deltaTime as f64);
 
             if pos.x > crate::SCREEN_WIDTH.into() {
                 pos.x -= crate::SCREEN_WIDTH as f64;
             }
-            if pos.x < 0.0 {
+            else if pos.x < 0.0 {
                 pos.x += crate::SCREEN_WIDTH as f64;
             }
+
             if pos.y > crate::SCREEN_HEIGHT.into() {
                 pos.y -= crate::SCREEN_HEIGHT as f64;
             }
-            if pos.y < 0.0 {
+            else if pos.y < 0.0 {
                 pos.y += crate::SCREEN_HEIGHT as f64;
             }
 
@@ -151,10 +162,11 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>){
     }
 }
 
-const FRICTION: f64 = 0.96;
-const MAX_SPEED: f64 = 6.0;
-pub fn update_movement(pos: &mut crate::components::Position, player: &mut crate::components::Player){
-    player.cur_speed*=FRICTION;
+const FRICTION: f64 = 2.5;
+const MAX_SPEED: f64 = 500.0;
+pub fn update_movement(pos: &mut crate::components::Position, player: &mut crate::components::Player, deltaTime: f64){
+    // player.cur_speed*=FRICTION;
+    player.cur_speed -= player.cur_speed * (FRICTION * deltaTime);
 
     player.cur_speed+=player.impulse;
 
@@ -162,8 +174,8 @@ pub fn update_movement(pos: &mut crate::components::Position, player: &mut crate
         player.cur_speed *= MAX_SPEED/player.cur_speed.length();
     }
 
-    pos.x += player.cur_speed.x;
-    pos.y += player.cur_speed.y;
+    pos.x += player.cur_speed.x * deltaTime;
+    pos.y += player.cur_speed.y * deltaTime;
 
     player.impulse = vector2d::Vector2D::new(0.0,0.0);
 }
@@ -185,7 +197,10 @@ pub fn load_world(ecs: &mut World){
         })
         .with(crate::components::Player{
             impulse: vector2d::Vector2D::new(0.0,0.0),
-            cur_speed: vector2d::Vector2D::new(0.0,0.0)
+            cur_speed: vector2d::Vector2D::new(0.0,0.0),
+            lives: 3,
+            died: false,
+            invulnerable: false
         })
         .build();
 
@@ -239,7 +254,7 @@ fn fire_missile(ecs: &mut World, position: components::Position){
             rot: 0.0
         })
         .with(crate::components::Missile{
-            speed: 5.0
+            speed: 600.0
         })
         .build();
 
@@ -265,8 +280,8 @@ pub fn create_asteroid(ecs: &mut World, position: components::Position, asteroid
             rot: 0.0
         })
         .with(crate::components::Asteroid{
-            speed: 2.5,
-            rot_speed: 0.5
+            speed: 150.0,
+            rot_speed: 150.0
         })
         .build();
 }

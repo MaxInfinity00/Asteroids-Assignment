@@ -1,4 +1,4 @@
-use specs::{System,WriteStorage, Join};
+use specs::{System, WriteStorage, Join, Read};
 use specs::prelude::Entities;
 
 pub struct AsteroidMover;
@@ -9,15 +9,17 @@ impl<'a> System<'a> for AsteroidMover{
     type SystemData = (
         WriteStorage<'a, components::Position>,
         WriteStorage<'a, components::Renderable>,
-        WriteStorage<'a, components::Asteroid>
+        WriteStorage<'a, components::Asteroid>,
+        Read<'a,crate::DeltaTime>
     );
 
     fn run(&mut self, mut data: Self::SystemData) {
+        let deltatime = data.3.0;
         for(pos,rend,asteroid) in (&mut data.0, &mut data.1, &data.2).join(){
             let radians = pos.rot.to_radians();
 
-            pos.x += asteroid.speed * radians.sin();
-            pos.y -= asteroid.speed * radians.cos();
+            pos.x += asteroid.speed * radians.sin() * deltatime;
+            pos.y -= asteroid.speed * radians.cos() * deltatime;
 
             let half_width = (rend.o_w / 2) as u32;
             let half_height = (rend.o_h / 2) as u32;
@@ -34,7 +36,7 @@ impl<'a> System<'a> for AsteroidMover{
                     }
             }
 
-            rend.rot += asteroid.rot_speed;
+            rend.rot += asteroid.rot_speed * deltatime;
             if rend.rot > 360.0 {
                 rend.rot -= 360.0;
             }
@@ -59,8 +61,11 @@ impl<'a> System<'a> for AsteroidCollider{
 
     // fn run(&mut self, mut data: Self::SystemData) {
     fn run(&mut self, data: Self::SystemData) {
-        let (positions, rends, players, asteroids, entities) = data;
-        for(players_pos, player_rend, _, entity) in (&positions,&rends, &players, &entities).join(){
+        let (positions, rends, mut players, asteroids, entities) = data;
+        for(players_pos, player_rend, player, entity) in (&positions,&rends, &mut players, &entities).join(){
+            if player.invulnerable {
+                continue;
+            }
             for(asteroid_pos, asteroid_rend, _) in (&positions, &rends, &asteroids).join(){
                 let diff_x: f64 = (players_pos.x - asteroid_pos.x).abs();
                 let diff_y: f64 = (players_pos.y - asteroid_pos.y).abs();
@@ -68,7 +73,12 @@ impl<'a> System<'a> for AsteroidCollider{
 
                 if hype < (player_rend.o_w + asteroid_rend.o_w) as f64 / 2.0 {
                     println!("Collision Detected!");
-                    let _ = entities.delete(entity);
+                    if player.lives > 1 {
+                        player.died = true;
+                    }
+                    else {
+                        let _ = entities.delete(entity);
+                    }
                 }
             }
         }
