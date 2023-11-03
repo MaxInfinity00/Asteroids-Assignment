@@ -29,6 +29,9 @@ pub mod missile;
 // const OUTPUT_HEIGHT: u32 = 100;
 const SCREEN_WIDTH: u32 = 1920;
 const SCREEN_HEIGHT: u32 = 1080;
+const NO_OF_SECTIONS: u32 = 4;
+const SECTION_WIDTH: u32 = SCREEN_WIDTH/NO_OF_SECTIONS;
+const SECTION_HEIGHT: u32 = SCREEN_HEIGHT/NO_OF_SECTIONS;
 
 const MUSIC_FILENAME: &str = "sounds/music/space_ranger.wav";
 const THRUSTER_FILENAME: &str = "sounds/fx/thrusters.mp3";

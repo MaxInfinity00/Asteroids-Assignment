@@ -3,7 +3,7 @@ use specs::{World, WorldExt, Builder, Join};
 
 use rand::Rng;
 
-use crate::{components, SHOOT_FILENAME};
+use crate::{components, SCREEN_HEIGHT, SCREEN_WIDTH, SHOOT_FILENAME};
 use crate::utils;
 
 const ROTATION_SPEED: f64 = 120.0;
@@ -11,7 +11,7 @@ const IMPULSE_SPEED: f64 = 300.0;
 pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>, deltaTime: f64){
     //Check status of the game world
     let mut must_reload_world = false;
-    let mut current_player_position = components::Position{x:0.0, y: 0.0, rot: 0.0};
+    let mut current_player_position = components::Position{x:0.0, y: 0.0, rot: 0.0, section: 0};
 
     {
         let mut players = ecs.write_storage::<crate::components::Player>();
@@ -75,14 +75,15 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>, deltaTime
             let new_asteroid = components::Position{
                 x: next_x,
                 y: next_y,
-                rot: next_rot
+                rot: next_rot,
+                section: 0
             };
             create_asteroid(ecs,new_asteroid,100);
         }
 
     }
 
-    let mut player_pos = components::Position{x: 0.0, y: 0.0, rot: 0.0};
+    let mut player_pos = components::Position{x: 0.0, y: 0.0, rot: 0.0,section: 0};
     let mut must_fire_missile = false;
     let mut thruster_pushed = false;
     {
@@ -177,6 +178,8 @@ pub fn update_movement(pos: &mut crate::components::Position, player: &mut crate
     pos.x += player.cur_speed.x * deltaTime;
     pos.y += player.cur_speed.y * deltaTime;
 
+    pos.section = (pos.x as u32/ crate::SECTION_WIDTH) * crate::NO_OF_SECTIONS +  (pos.y as u32 / crate::SECTION_HEIGHT);
+
     player.impulse = vector2d::Vector2D::new(0.0,0.0);
 }
 
@@ -184,7 +187,7 @@ pub fn update_movement(pos: &mut crate::components::Position, player: &mut crate
 
 pub fn load_world(ecs: &mut World){
     ecs.create_entity()
-        .with(crate::components::Position{x: 350.0, y: 250.0, rot: 0.0})
+        .with(crate::components::Position{x: (SCREEN_WIDTH/2) as f64, y: (SCREEN_HEIGHT/2) as f64, rot: 0.0, section: 0})
         .with(crate:: components::Renderable{
             tex_name: String::from("img/ship.png"),
             i_w: 100,
@@ -204,7 +207,7 @@ pub fn load_world(ecs: &mut World){
         })
         .build();
 
-    create_asteroid(ecs, components::Position{x: 400.0, y: 235.0, rot: 45.0},50);
+    create_asteroid(ecs, components::Position{x: 400.0, y: 235.0, rot: 45.0, section: 0},50);
 
     ecs.create_entity()
         .with(crate::components::GameData{
@@ -300,7 +303,7 @@ pub fn create_thousand_asteroids(ecs: &mut World){
         let x = rng.gen_range(50.0..crate::SCREEN_WIDTH as f64 - 50.0);
         let y = rng.gen_range(50.0..crate::SCREEN_HEIGHT as f64 - 50.0);
         let rot = rng.gen_range(0.0..360.0);
-        create_asteroid(ecs, components::Position{x, y, rot }, 50);
+        create_asteroid(ecs, components::Position{x, y, rot ,section:0}, 50);
     }
 }
 

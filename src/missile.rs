@@ -26,6 +26,8 @@ impl<'a> System<'a> for MissileMover {
             pos.x += move_x;
             pos.y -= move_y;
 
+            pos.section = (pos.x as u32/ crate::SECTION_WIDTH) * crate::NO_OF_SECTIONS +  (pos.y as u32 / crate::SECTION_HEIGHT);
+
             if pos.x > crate::SCREEN_WIDTH.into() || pos.x < 0.0 || pos.y > crate::SCREEN_HEIGHT.into() || pos.y < 0.0 {
                 entities.delete(entity).unwrap();
 
@@ -65,6 +67,10 @@ impl<'a> System<'a> for MissileStriker {
 
         for( asteroid_pos,asteroid_rend,_, asteroid_entity) in (positions,renderables,asteroids,entities).join(){
             for(missile_pos,_,_,missile_entity) in (positions,renderables,missiles,entities).join(){
+                if asteroid_pos.section != missile_pos.section {
+                    continue;
+                }
+
                 let diff_x = (asteroid_pos.x - missile_pos.x).abs();
                 let diff_y = (asteroid_pos.y - missile_pos.y).abs();
                 let dist = (diff_x * diff_x + diff_y * diff_y);
@@ -84,12 +90,14 @@ impl<'a> System<'a> for MissileStriker {
                             x: asteroid_pos.x,
                             y: asteroid_pos.y,
                             rot: asteroid_pos.rot - 90.0,
+                            section: asteroid_pos.section,
                             size: new_size
                         });
                         asteroid_creation.push(components::PendingAsteroid{
                             x: asteroid_pos.x,
                             y: asteroid_pos.y,
                             rot: asteroid_pos.rot + 90.0,
+                            section: asteroid_pos.section,
                             size: new_size
                         });
                     }
@@ -101,7 +109,7 @@ impl<'a> System<'a> for MissileStriker {
         // let (ref positions, ref renderables, _, ref asteroids,ref entities) = data;
         for new_asteroid in asteroid_creation {
             let new_ast = entities.create();
-            positions.insert(new_ast, components::Position{x:new_asteroid.x, y:new_asteroid.y, rot:new_asteroid.rot}).ok();
+            positions.insert(new_ast, components::Position{x:new_asteroid.x, y:new_asteroid.y, rot:new_asteroid.rot,section: new_asteroid.section}).ok();
             asteroids.insert(new_ast, components::Asteroid{speed: 150.0, rot_speed: 150.0}).ok();
             renderables.insert(new_ast, components::Renderable{
                 tex_name: "img/asteroid1.png".to_string(),

@@ -3,7 +3,7 @@ use specs::prelude::Entities;
 
 pub struct AsteroidMover;
 
-use crate::components;
+use crate::{components, NO_OF_SECTIONS, SECTION_HEIGHT, SECTION_WIDTH};
 
 impl<'a> System<'a> for AsteroidMover{
     type SystemData = (
@@ -20,6 +20,8 @@ impl<'a> System<'a> for AsteroidMover{
 
             pos.x += asteroid.speed * radians.sin() * deltatime;
             pos.y -= asteroid.speed * radians.cos() * deltatime;
+
+            pos.section = (pos.x as u32/ SECTION_WIDTH) * NO_OF_SECTIONS +  (pos.y as u32 / SECTION_HEIGHT);
 
             let half_width = (rend.o_w / 2) as u32;
             let half_height = (rend.o_h / 2) as u32;
@@ -63,10 +65,13 @@ impl<'a> System<'a> for AsteroidCollider{
     fn run(&mut self, data: Self::SystemData) {
         let (positions, rends, mut players, asteroids, entities) = data;
         for(players_pos, player_rend, player, entity) in (&positions,&rends, &mut players, &entities).join(){
-            if player.invulnerable {
+            if player.invulnerable || player.died {
                 continue;
             }
             for(asteroid_pos, asteroid_rend, _) in (&positions, &rends, &asteroids).join(){
+                if asteroid_pos.section != players_pos.section {
+                    continue;
+                }
                 let diff_x: f64 = (players_pos.x - asteroid_pos.x).abs();
                 let diff_y: f64 = (players_pos.y - asteroid_pos.y).abs();
                 let hype: f64 = ((diff_x*diff_x) + (diff_y*diff_y));

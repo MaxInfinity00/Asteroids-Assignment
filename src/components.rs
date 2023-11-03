@@ -6,7 +6,8 @@ use vector2d::Vector2D;
 pub struct Position {
     pub x: f64,
     pub y: f64,
-    pub rot: f64
+    pub rot: f64,
+    pub section: u32
 }
 
 // Renderable Item and image deets
@@ -48,6 +49,7 @@ pub struct PendingAsteroid{
     pub x: f64,
     pub y: f64,
     pub rot: f64,
+    pub section: u32,
     pub size: u32
 }
 
