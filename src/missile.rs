@@ -67,9 +67,8 @@ impl<'a> System<'a> for MissileStriker {
             for(missile_pos,_,_,missile_entity) in (positions,renderables,missiles,entities).join(){
                 let diff_x = (asteroid_pos.x - missile_pos.x).abs();
                 let diff_y = (asteroid_pos.y - missile_pos.y).abs();
-                let dist = (diff_x * diff_x + diff_y * diff_y).sqrt();
+                let dist = (diff_x * diff_x + diff_y * diff_y);
 
-                // if dist < (asteroid_rend.o_w as f64  / 2.0)*(asteroid_rend.o_w as f64  / 2.0){
                 if dist < (asteroid_rend.o_w as f64  / 2.0)*(asteroid_rend.o_w as f64  / 2.0){
                     score += 10;
                     entities.delete(missile_entity).ok();

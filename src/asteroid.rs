@@ -69,9 +69,9 @@ impl<'a> System<'a> for AsteroidCollider{
             for(asteroid_pos, asteroid_rend, _) in (&positions, &rends, &asteroids).join(){
                 let diff_x: f64 = (players_pos.x - asteroid_pos.x).abs();
                 let diff_y: f64 = (players_pos.y - asteroid_pos.y).abs();
-                let hype: f64 = ((diff_x*diff_x) + (diff_y*diff_y)).sqrt();
+                let hype: f64 = ((diff_x*diff_x) + (diff_y*diff_y));
 
-                if hype < (player_rend.o_w + asteroid_rend.o_w) as f64 / 2.0 {
+                if hype < ((player_rend.o_w + asteroid_rend.o_w) as f64 / 2.0)*((player_rend.o_w + asteroid_rend.o_w) as f64 / 2.0) {
                     println!("Collision Detected!");
                     if player.lives > 1 {
                         player.died = true;

@@ -66,8 +66,8 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String,bool>, deltaTime
 
             let diff_x = (next_x - current_player_position.x).abs();
             let diff_y = (next_y - current_player_position.y).abs();
-            let dist = (diff_x * diff_x + diff_y * diff_y).sqrt();
-            if dist < 150.0 {
+            let dist = (diff_x * diff_x + diff_y * diff_y);
+            if dist < 22500.0 {
                 continue;
             }
 
