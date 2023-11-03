@@ -350,9 +350,15 @@ fn main() -> Result<(),String>{
                 Event::KeyUp {keycode: Some(Keycode::U),..} => {
                     println!("FPS Toggle");
                     unlockedFPS = !unlockedFPS;
-                    if(unlockedFPS){
+                    if unlockedFPS {
                         sound_manager.stop_sound(&THRUSTER_FILENAME.to_string());
                     }
+                },
+                Event::KeyUp {keycode:Some(Keycode::I),..} => {
+                    game::toggle_invincibility(&mut gs.ecs);
+                },
+                Event::KeyUp {keycode:Some(Keycode::T),..} => {
+                    game::create_thousand_asteroids(&mut gs.ecs);
                 },
                 Event::KeyDown {keycode,..} => {
                     match keycode {
@@ -378,7 +384,7 @@ fn main() -> Result<(),String>{
         let delta_time = now.duration_since(last_frame_time).as_secs_f64();
         last_frame_time = now;
 
-        if(delta_time != 0.0){
+        if delta_time != 0.0 {
             fps = (1.0/delta_time) as u64;
         }
         // frame_count += 1;

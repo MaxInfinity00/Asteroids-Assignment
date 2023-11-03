@@ -285,3 +285,20 @@ pub fn create_asteroid(ecs: &mut World, position: components::Position, asteroid
         })
         .build();
 }
+
+pub fn toggle_invincibility(ecs: &mut World){
+    let mut players = ecs.write_storage::<crate::components::Player>();
+    for mut player in (&mut players).join(){
+        player.invulnerable = !player.invulnerable;
+    }
+}
+
+pub fn create_thousand_asteroids(ecs: &mut World){
+    let mut rng = rand::thread_rng();
+    for i in 0..1000 {
+        let x = rng.gen_range(50.0..crate::SCREEN_WIDTH as f64 - 50.0);
+        let y = rng.gen_range(50.0..crate::SCREEN_HEIGHT as f64 - 50.0);
+        let rot = rng.gen_range(0.0..360.0);
+        create_asteroid(ecs, components::Position{x, y, rot }, 50);
+    }
+}
