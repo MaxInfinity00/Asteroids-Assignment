@@ -209,7 +209,8 @@ pub fn load_world(ecs: &mut World){
     ecs.create_entity()
         .with(crate::components::GameData{
             score: 0,
-            level: 1
+            level: 1,
+            showControls: false
         })
         .build();
 
@@ -301,4 +302,16 @@ pub fn create_thousand_asteroids(ecs: &mut World){
         let rot = rng.gen_range(0.0..360.0);
         create_asteroid(ecs, components::Position{x, y, rot }, 50);
     }
+}
+
+pub fn toggle_show_controls(ecs: &mut World){
+    let mut gamedatas = ecs.write_storage::<crate::components::GameData>();
+    for mut gamedata in (&mut gamedatas).join(){
+        gamedata.showControls = !gamedata.showControls;
+    }
+}
+
+pub fn get_asteroid_count(ecs: &World) -> u32{
+    let mut asteroids = ecs.read_storage::<crate::components::Asteroid>();
+    asteroids.join().count() as u32
 }

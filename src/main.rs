@@ -27,8 +27,8 @@ pub mod missile;
 // const IMG_HEIGHT: u32 = 1000;
 // const OUTPUT_WIDTH: u32 = 100;
 // const OUTPUT_HEIGHT: u32 = 100;
-const SCREEN_WIDTH: u32 = 800;
-const SCREEN_HEIGHT: u32 = 600;
+const SCREEN_WIDTH: u32 = 1920;
+const SCREEN_HEIGHT: u32 = 1080;
 
 const MUSIC_FILENAME: &str = "sounds/music/space_ranger.wav";
 const THRUSTER_FILENAME: &str = "sounds/fx/thrusters.mp3";
@@ -123,6 +123,7 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
     let players = ecs.read_storage::<components::Player>();
     for(renderable, pos, player) in (&renderables, &positions, &players).join(){
 
+        //Show Lives
         let lives: String = "Lives: ".to_string() + &player.lives.to_string();
         let surface = font
             .render(&lives)
@@ -132,7 +133,7 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
             .create_texture_from_surface(&surface)
             .map_err(|e| e.to_string())?;
 
-        let target = Rect::new((SCREEN_WIDTH - 110) as i32,55 as i32,100 as u32,50 as u32);
+        let target = Rect::new((SCREEN_WIDTH - 135) as i32,10 as i32,125 as u32,50 as u32);
         canvas.copy(&texture, None, Some(target));
 
         let src = Rect::new(0,0,renderable.i_w, renderable.i_h);
@@ -178,17 +179,51 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
 
     let gamedatas = ecs.read_storage::<components::GameData>();
     for gamedata in (gamedatas).join(){
-        let score: String = "Score: ".to_string() + &gamedata.score.to_string();
-        let surface = font
-            .render(&score)
-            .blended(Color::RGBA(0,0,0,255))
-            .map_err(|e| e.to_string())?;
-        let texture = texture_creator
-            .create_texture_from_surface(&surface)
-            .map_err(|e| e.to_string())?;
 
-        let target = Rect::new(10 as i32,0 as i32,100 as u32,50 as u32);
-        canvas.copy(&texture, None, Some(target));
+        if &GAMESTATE.lock().unwrap().highscore > &gamedata.score {
+            //Show Score
+            let score: String = "Score: ".to_string() + &gamedata.score.to_string();
+            let surface = font
+                .render(&score)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+
+            let target = Rect::new(10 as i32,0 as i32,125 as u32,50 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+            //Show Highscore
+            let highscore: String = "High Score: ".to_string() + &GAMESTATE.lock().unwrap().highscore.to_string();
+            let surface = font
+                .render(&highscore)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new(10 as i32,50 as i32,150 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+        }
+        else{
+            //Show Score (High)
+            let highscore: String = "Score: ".to_string() + &GAMESTATE.lock().unwrap().highscore.to_string() + " High!";
+            let surface = font
+                .render(&highscore)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+
+            let target = Rect::new(10 as i32,0 as i32,200 as u32,50 as u32);
+            canvas.copy(&texture, None, Some(target));
+        }
 
         //Show Level
         let level: String = "Level: ".to_string() + &gamedata.level.to_string();
@@ -200,36 +235,128 @@ fn render(canvas: &mut WindowCanvas, texture_manager: &mut texture_manager::Text
             .create_texture_from_surface(&surface)
             .map_err(|e| e.to_string())?;
 
-        let target = Rect::new((SCREEN_WIDTH - 110) as i32,0 as i32,100 as u32,50 as u32);
-        canvas.copy(&texture, None, Some(target));
-
-
-        //Show Highscore
-        let highscore: String = "High Score: ".to_string() + &GAMESTATE.lock().unwrap().highscore.to_string();
-        let surface = font
-            .render(&highscore)
-            .blended(Color::RGBA(0,0,0,255))
-            .map_err(|e| e.to_string())?;
-        let texture = texture_creator
-            .create_texture_from_surface(&surface)
-            .map_err(|e| e.to_string())?;
-
-
         let target = Rect::new(10 as i32,(SCREEN_HEIGHT - 60 ) as i32,150 as u32,50 as u32);
         canvas.copy(&texture, None, Some(target));
 
-        //Show FPS
-        let fpsCounter: String = "FPS: ".to_string() + &fps.to_string();
-        let surface = font
-            .render(&fpsCounter)
-            .blended(Color::RGBA(0,0,0,255))
-            .map_err(|e| e.to_string())?;
-        let texture = texture_creator
-            .create_texture_from_surface(&surface)
-            .map_err(|e| e.to_string())?;
+        if gamedata.showControls {
+            //Show Controls
+            let moveControls: String = "WASD Move".to_string();
+            let surface = font
+                .render(&moveControls)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
 
-        let target = Rect::new((SCREEN_WIDTH - 160) as i32,(SCREEN_HEIGHT - 60 ) as i32,150 as u32,50 as u32);
-        canvas.copy(&texture, None, Some(target));
+            let target = Rect::new((SCREEN_WIDTH - 185) as i32,(SCREEN_HEIGHT - 245 ) as i32,175 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+            let spaceControls: String = "Space Shoot".to_string();
+            let surface = font
+                .render(&spaceControls)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new((SCREEN_WIDTH - 210) as i32,(SCREEN_HEIGHT - 205 ) as i32,200 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+            let MusicControls: String = "P Un/Pause Music".to_string();
+            let surface = font
+                .render(&MusicControls)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+
+            let target = Rect::new((SCREEN_WIDTH - 260) as i32,(SCREEN_HEIGHT - 165 ) as i32,250 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+            let InvincibleControls: String = "I Invincible".to_string();
+            let surface = font
+                .render(&InvincibleControls)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new((SCREEN_WIDTH - 210) as i32,(SCREEN_HEIGHT - 125 ) as i32,200 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+
+            let AsteroidControls: String = "O 1000 Asteroids".to_string();
+            let surface = font
+                .render(&AsteroidControls)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new((SCREEN_WIDTH - 260) as i32,(SCREEN_HEIGHT - 85 ) as i32,250 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+            let FPSControls: String = "U Unlock FPS".to_string();
+            let surface = font
+                .render(&FPSControls)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new((SCREEN_WIDTH - 210) as i32,(SCREEN_HEIGHT - 45 ) as i32,200 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+
+
+            //Show Asteroids
+            let asteroidCounter: String = "Asteroids: ".to_string() + &game::get_asteroid_count(&ecs).to_string() + " ";
+
+            let surface = font
+                .render(&asteroidCounter)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new((SCREEN_WIDTH - 480) as i32,(SCREEN_HEIGHT - 85 ) as i32,225 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+
+            //Show FPS
+            let fpsCounter: String = "FPS: ".to_string() + &fps.to_string();
+            let surface = font
+                .render(&fpsCounter)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new((SCREEN_WIDTH - 480) as i32,(SCREEN_HEIGHT - 45 ) as i32,125 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+        }
+        else{
+            //Show Info Control
+            let info: String = "H Show Info".to_string();
+            let surface = font
+                .render(&info)
+                .blended(Color::RGBA(0,0,0,255))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let target = Rect::new((SCREEN_WIDTH - 185) as i32,(SCREEN_HEIGHT - 45 ) as i32,175 as u32,35 as u32);
+            canvas.copy(&texture, None, Some(target));
+        }
     }
 
     canvas.present();
@@ -254,7 +381,8 @@ fn main() -> Result<(),String>{
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     
-    let window = video_subsystem.window("Asteroids",800,600)
+    let window = video_subsystem.window("Asteroids",SCREEN_WIDTH,SCREEN_HEIGHT)
+        .fullscreen()
         .position_centered()
         .build()
         .expect("Could not initialize video subsystem");
@@ -323,6 +451,7 @@ fn main() -> Result<(),String>{
     // let mut loop_count = 100;
 
     let mut unlockedFPS = false;
+    let mut musicPlaying = true;
 
     'running: loop {
         for event in event_pump.poll_iter(){
@@ -340,12 +469,12 @@ fn main() -> Result<(),String>{
                     utils::key_up(&mut key_manager, " ".to_string());
                 },
                 Event::KeyUp {keycode: Some(Keycode::P),..} => {
-                    println!("Pausing Music");
-                    sound_manager.stop_sound(&MUSIC_FILENAME.to_string());
-                },
-                Event::KeyUp {keycode: Some(Keycode::O),..} => {
-                    println!("Resuming Music");
-                    sound_manager.resume_sound(&MUSIC_FILENAME.to_string());
+                    musicPlaying = !musicPlaying;
+                    if musicPlaying {
+                        sound_manager.resume_sound(&MUSIC_FILENAME.to_string())
+                    } else {
+                        sound_manager.stop_sound(&MUSIC_FILENAME.to_string());
+                    }
                 },
                 Event::KeyUp {keycode: Some(Keycode::U),..} => {
                     println!("FPS Toggle");
@@ -357,8 +486,11 @@ fn main() -> Result<(),String>{
                 Event::KeyUp {keycode:Some(Keycode::I),..} => {
                     game::toggle_invincibility(&mut gs.ecs);
                 },
-                Event::KeyUp {keycode:Some(Keycode::T),..} => {
+                Event::KeyUp {keycode:Some(Keycode::O),..} => {
                     game::create_thousand_asteroids(&mut gs.ecs);
+                },
+                Event::KeyUp {keycode:Some(Keycode::H),..} => {
+                    game::toggle_show_controls(&mut gs.ecs);
                 },
                 Event::KeyDown {keycode,..} => {
                     match keycode {

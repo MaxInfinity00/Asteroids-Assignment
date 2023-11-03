@@ -54,7 +54,8 @@ pub struct PendingAsteroid{
 #[derive(Component)]
 pub struct GameData{
     pub score: u32,
-    pub level: u32
+    pub level: u32,
+    pub showControls: bool
 }
 
 // #[derive(Component)]

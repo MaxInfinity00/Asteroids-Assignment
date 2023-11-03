@@ -75,8 +75,7 @@ impl<'a> System<'a> for AsteroidCollider{
                     println!("Collision Detected!");
                     if player.lives > 1 {
                         player.died = true;
-                    }
-                    else {
+                    } else {
                         let _ = entities.delete(entity);
                     }
                 }
